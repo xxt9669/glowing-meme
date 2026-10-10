@@ -438,3 +438,107 @@ def check_once():
  
         # 每个商品之间间隔2秒，避免请求太快被京东屏蔽
         time.sleep(2)
+# ---- 第4步：如果有降价商品，发微信通知 ----
+    if dropped_items:
+        print(f"\n{'='*55}")
+        print(f"📉 共 {len(dropped_items)} 个商品降价！")
+ 
+        if sendkey:
+            # 组装通知内容（Markdown 格式，Server酱 支持 Markdown）
+            content = "## 京东商品降价提醒\n\n"
+            content += f"共检测到 **{len(dropped_items)}** 个商品降价：\n\n"
+ 
+            for i, item in enumerate(dropped_items, 1):
+                content += f"### {i}. {item['name']}\n"
+                content += f"- 链接：[点击查看]({item['url']})\n"
+                content += f"- 上次价格：¥{item['last_price']}\n"
+                content += f"- 当前价格：¥{item['current_price']}\n"
+                content += f"- 降价：¥{item['drop_amount']:.2f}（{item['drop_pct']:.1f}%）\n\n"
+ 
+            content += "---\n*由京东降价监控程序自动发送*"
+ 
+            # 发送通知
+            send_notify(sendkey, "京东商品降价提醒", content)
+        else:
+            print("⚠️  有商品降价，但未配置 SendKey，无法发送微信通知")
+ 
+    else:
+        print(f"\n✅ 本次检查完毕，没有商品降价")
+ 
+    print(f"🕐 检查结束 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+ 
+ 
+# ================================================================
+#  测试通知
+# ================================================================
+ 
+def test_notify():
+    """
+    发送一条测试通知，验证 SendKey 是否配置正确
+ 
+    用法：python monitor.py --test-notify
+    """
+    print("📧 正在发送测试通知...")
+    sendkey = get_sendkey()
+    if not sendkey:
+        return
+ 
+    title = "京东监控 - 测试通知"
+    content = (
+        "这是一条测试通知。\n\n"
+        "如果你在微信上收到了这条消息，说明 SendKey 配置正确！\n\n"
+        "监控程序已就绪 ✅\n\n"
+        "---\n*来自京东降价监控程序*"
+    )
+ 
+    send_notify(sendkey, title, content)
+ 
+ 
+# ================================================================
+#  主函数（程序入口）
+# ================================================================
+ 
+def main():
+    """
+    主函数：解析命令行参数，启动监控
+ 
+    支持的参数：
+      --once           只检查一次（适合测试）
+      --test-notify    发送一条测试通知（验证 SendKey）
+      --interval=N     设置检查间隔为 N 秒（默认 3600 = 1小时）
+    """
+    # 默认参数
+    run_once = False         # 是否只跑一次
+    interval = CHECK_INTERVAL  # 检查间隔
+    test_mode = False        # 是否只测通知
+ 
+    # 遍历命令行参数
+    for arg in sys.argv[1:]:
+        if arg == "--once":
+            run_once = True
+        elif arg == "--test-notify":
+            test_mode = True
+        elif arg.startswith("--interval="):
+            # 提取等号后面的数字
+            try:
+                interval = int(arg.split("=")[1])
+            except ValueError:
+                print(f"❌ --interval 需要一个数字，你输入的是：{arg}")
+                sys.exit(1)
+        else:
+            print(f"❌ 不认识的参数：{arg}")
+            print(f"   支持的参数：--once, --test-notify, --interval=秒数")
+            sys.exit(1)
+ 
+    # 初始化数据库
+    init_db()
+ 
+    # 测试通知模式
+    if test_mode:
+        test_notify()
+        return
+ 
+    # 单次检查模式（适合第一次测试）
+    if run_once:
+        check_once()
+        return
