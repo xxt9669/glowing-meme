@@ -253,3 +253,99 @@ def init_db():
     conn.commit()
     conn.close()
     print(f"💾 数据库就绪：{DB_FILE}")
+
+ 
+def save_price(sku_id, url, price):
+    """
+    把一次价格查询结果存入数据库
+ 
+    参数：
+      sku_id - 商品ID
+      url    - 商品链接
+      price  - 当前价格
+    """
+    conn = sqlite3.connect(DB_FILE)
+ 
+    # 获取当前时间，格式如 "2024-01-15 14:30:00"
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+ 
+    # 插入一条记录
+    # ? 是占位符，后面的元组按顺序填入
+    conn.execute(
+        "INSERT INTO price_history (sku_id, url, price, checked_at) VALUES (?, ?, ?, ?)",
+        (sku_id, url, price, now)
+    )
+ 
+    conn.commit()
+    conn.close()
+ 
+ 
+def get_last_price(sku_id):
+    """
+    查询某商品上一次记录的价格
+ 
+    从数据库中找到该商品最新一条记录的 price 值
+    （注意：在 save_price 之前调用，所以拿到的是上一次的价格）
+ 
+    参数：sku_id - 商品ID
+    返回：价格（浮点数），没有历史记录返回 None
+    """
+    conn = sqlite3.connect(DB_FILE)
+ 
+    # 查询语句：找到 sku_id 匹配的记录，按 id 倒序排列，取第一条
+    # ORDER BY id DESC 意思是按 id 从大到小排（最新的在最前面）
+    # LIMIT 1 意思是只取第一条
+    cur = conn.execute(
+        "SELECT price FROM price_history WHERE sku_id = ? ORDER BY id DESC LIMIT 1",
+        (sku_id,)
+    )
+ 
+    # fetchone() 取出查询结果的第一行
+    row = cur.fetchone()
+    conn.close()
+ 
+    # 如果有结果，row 是一个元组如 (999.0,)，取第一个元素 row[0]
+    # 如果没有结果，row 是 None
+    if row:
+        return row[0]
+    return None
+ 
+ 
+# ================================================================
+#  Server酱 通知
+# ================================================================
+ 
+def send_notify(sendkey, title, content):
+    """
+    通过 Server酱 发送微信通知
+ 
+    参数：
+      sendkey - 你的 SendKey
+      title   - 通知标题（简短）
+      content - 通知内容（支持 Markdown 格式）
+ 
+    返回：True=成功，False=失败
+    """
+    try:
+        # 向 Server酱 接口发送 POST 请求
+        # text 是标题，desp 是正文（支持 Markdown）
+        resp = requests.post(
+            SERVERCHAN_API.format(sendkey),
+            data={"text": title, "desp": content},
+            headers=HEADERS,
+            timeout=10
+        )
+        # 解析返回的 JSON
+        result = resp.json()
+ 
+        # Server酱 返回 code=0 表示发送成功
+        if result.get("code") == 0:
+            print("   ✅ 通知已发送到微信")
+            return True
+        else:
+            print(f"   ❌ 通知发送失败：{result.get('message', result)}")
+            return False
+ 
+    except Exception as e:
+        print(f"   ❌ 通知发送异常：{e}")
+        return False
