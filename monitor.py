@@ -542,3 +542,30 @@ def main():
     if run_once:
         check_once()
         return
+# 持续监控模式（默认）
+    print(f"\n🚀 启动持续监控模式，每 {interval} 秒（约 {interval/60:.0f} 分钟）检查一次")
+    print(f"   按 Ctrl+C 可以停止")
+    print(f"   首次检查即将开始...")
+ 
+    # 无限循环，不断检查
+    while True:
+        try:
+            check_once()
+            print(f"\n⏰ 下次检查在 {interval} 秒后...")
+            time.sleep(interval)
+ 
+        except KeyboardInterrupt:
+            # 用户按了 Ctrl+C，退出程序
+            print("\n\n👋 已停止监控，再见！")
+            break
+ 
+        except Exception as e:
+            # 出现意外错误，等一会儿再试
+            print(f"\n❌ 发生错误：{e}")
+            print(f"   {interval} 秒后自动重试...")
+            time.sleep(interval)
+ 
+ 
+# 程序入口：当直接运行这个文件时，执行 main 函数
+if __name__ == "__main__":
+    main()
