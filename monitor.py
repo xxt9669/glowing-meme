@@ -349,3 +349,92 @@ def send_notify(sendkey, title, content):
     except Exception as e:
         print(f"   ❌ 通知发送异常：{e}")
         return False
+# ================================================================
+#  核心逻辑：执行一次价格检查
+# ================================================================
+ 
+def check_once():
+    """
+    执行一次完整的价格检查流程：
+ 
+    1. 加载商品列表
+    2. 逐个查询价格
+    3. 与上次价格对比
+    4. 降价则记录下来
+    5. 所有商品查完后，统一发一条通知
+    6. 把本次价格存入数据库
+    """
+    print(f"\n{'='*55}")
+    print(f"🕐 开始检查 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"{'='*55}")
+ 
+    # ---- 第1步：加载商品列表 ----
+    products = load_products()
+    if not products:
+        print("没有商品可检查，请先在 products.txt 中添加商品链接")
+        return
+ 
+    # ---- 第2步：读取 SendKey（可能为空，空的话只记录不发通知）----
+    sendkey = get_sendkey()
+ 
+    # 用来收集所有降价的商品
+    dropped_items = []
+ 
+    # ---- 第3步：逐个查询价格 ----
+    for name, url in products:
+        # 从链接中提取商品ID
+        sku_id = extract_sku_id(url)
+        if not sku_id:
+            print(f"\n⚠️  无法提取商品ID：{url}")
+            continue
+ 
+        display_name = get_display_name(name, sku_id)
+        print(f"\n🔍 检查：{display_name}")
+        print(f"   链接：{url}")
+ 
+        # 获取当前价格
+        current_price = get_jd_price(sku_id)
+        if current_price is None:
+            print(f"   跳过（未获取到价格）")
+            continue
+ 
+        print(f"   当前价格：¥{current_price}")
+ 
+        # 获取上次记录的价格（注意：此时还没存入本次价格）
+        last_price = get_last_price(sku_id)
+ 
+        if last_price is None:
+            # 首次记录，没有历史数据可以对比
+            print(f"   📝 首次记录，已存入数据库")
+ 
+        elif current_price < last_price:
+            # 降价了！
+            drop_amount = last_price - current_price         # 降了多少
+            drop_pct = (drop_amount / last_price) * 100      # 降了百分之几
+            print(f"   📉 降价！上次 ¥{last_price} → 现在 ¥{current_price}")
+            print(f"       降了 ¥{drop_amount:.2f}（{drop_pct:.1f}%）")
+ 
+            # 把降价信息收集起来，等所有商品查完一起发通知
+            dropped_items.append({
+                "name": display_name,
+                "sku_id": sku_id,
+                "url": url,
+                "last_price": last_price,
+                "current_price": current_price,
+                "drop_amount": drop_amount,
+                "drop_pct": drop_pct,
+            })
+ 
+        elif current_price > last_price:
+            # 涨价了（不发通知，只打印）
+            print(f"   📈 涨价了：上次 ¥{last_price} → 现在 ¥{current_price}（不发通知）")
+ 
+        else:
+            # 价格没变
+            print(f"   ➖ 价格不变：¥{current_price}")
+ 
+        # 把本次价格存入数据库
+        save_price(sku_id, url, current_price)
+ 
+        # 每个商品之间间隔2秒，避免请求太快被京东屏蔽
+        time.sleep(2)
