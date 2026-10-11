@@ -22,4 +22,4 @@ jobs:
       - name: 运行监控
         env:
           SC_SENDKEY: ${{ secrets.SC_SENDKEY }}
-        run: python monitor.py --once
+        run: python monitor.py --report
