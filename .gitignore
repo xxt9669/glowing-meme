@@ -1,0 +1,10 @@
+# 敏感信息（千万别上传到 Gitee！）
+.env
+ 
+# 数据库文件
+*.db
+ 
+# Python 缓存文件
+__pycache__/
+*.pyc
+*.pyo
