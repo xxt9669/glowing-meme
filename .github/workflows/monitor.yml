@@ -1,0 +1,25 @@
+name: 京东降价监控
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 设置 Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 运行监控
+        env:
+          SC_SENDKEY: ${{ secrets.SC_SENDKEY }}
+        run: python monitor.py --once
