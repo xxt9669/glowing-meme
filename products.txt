@@ -1,0 +1,4 @@
+# 京东商品列表
+# 格式：名称|链接
+
+ThinkBook16+ 2026|https://item.jd.com/10224627892865.html
