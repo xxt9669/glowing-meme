@@ -569,3 +569,38 @@ def main():
 # 程序入口：当直接运行这个文件时，执行 main 函数
 if __name__ == "__main__":
     main()
+
+
+def report_once():
+    init_db()
+    products = load_products()
+    if not products:
+        print("没有商品可查")
+        return
+    sendkey = get_sendkey()
+    lines = ["## 京东价格查询\n"]
+    lines.append(f"查询时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    for name, url in products:
+        sku_id = extract_sku_id(url)
+        if not sku_id:
+            continue
+        display_name = get_display_name(name, sku_id)
+        price = get_jd_price(sku_id)
+        if price is None:
+            lines.append(f"- {display_name}：查询失败\n")
+            continue
+        lines.append(f"- {display_name}：**¥{price}**\n")
+        lines.append(f"  [点此查看]({url})\n")
+        save_price(sku_id, url, price)
+        time.sleep(2)
+    if sendkey:
+        send_notify(sendkey, "京东价格查询", "".join(lines))
+    else:
+        print("未配置SendKey，无法发送")
+
+
+if __name__ == "__main__":
+    if "--report" in sys.argv:
+        report_once()
+    else:
+        main()
